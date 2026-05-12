@@ -25,10 +25,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 2. 初始化狀態
-if 'shuffled_list' not in st.session_state:
-    vip_partners = ["5吳瑾瑜", "9李忻嬡"] 
-    vision_only = ["1吳采軒", "21陳彥寧", "25葉明寬"] 
+if 'draw_pool' not in st.session_state:
+    # 定義「視力需求者」
+    st.session_state.vision_needs = ["1吳采軒", "21陳彥寧", "25葉明寬"]
+    # 定義「好朋友組」
+    st.session_state.partner_needs = ["5吳瑾瑜", "9李忻嬡"]
     
+    # 所有人大洗牌 (完全公平)
     full_names = [
         "20黃柏瑞", "14郭承叡", "3吳亭葦", "7宋禹潔", "15張谷杉",
         "5吳瑾瑜", "9李忻嬡", "29顏子旅", "10李維", "17張楚楚", "16陳永軍",
@@ -36,19 +39,12 @@ if 'shuffled_list' not in st.session_state:
         "11李沁恩", "24劉品佑", "23黃祺方", "2任為謙", "30黨宜安", "27謝欣妤",
         "13林霏", "8李羿宸", "4吳元希", "12洪軒平", "28簡向晨"
     ]
-
-    random.shuffle(vision_only)
-    front_pool = vip_partners + vision_only 
     
-    assigned_already = set(front_pool)
-    others = [p for p in full_names if p not in assigned_already]
-    random.shuffle(others)
+    st.session_state.draw_pool = full_names.copy()
+    random.shuffle(st.session_state.draw_pool)
     
-    st.session_state.shuffled_list = front_pool + others
-    st.session_state.seated_count = 0
     st.session_state.seats = [None] * 28
-    # 紀錄哪些名字是特別安排的
-    st.session_state.special_names = set(front_pool)
+    st.session_state.current_seat_idx = 0  # 準備填入的座位編號 (0-27)
 
 # --- 介面呈現 ---
 st.title("🏫 10B 尋夢班 座位抽籤系統")
@@ -56,49 +52,69 @@ st.title("🏫 10B 尋夢班 座位抽籤系統")
 with st.sidebar:
     st.header("⚙️ 控制中心")
     show_special = st.checkbox("🔍 顯示特別安排標記", value=False)
-    st.write("---")
     if st.button("🔄 重置並重新洗牌"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+        for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
 
-# 抽籤操作區 (兩欄按鈕)
-if st.session_state.seated_count < 28:
-    col_one, col_all = st.columns(2)
-    
-    with col_one:
-        if st.button("🎲 抽出下一位"):
-            next_p = st.session_state.shuffled_list[st.session_state.seated_count]
-            st.session_state.seats[st.session_state.seated_count] = next_p
-            st.session_state.seated_count += 1
-            if st.session_state.seated_count == 28: st.balloons()
+# --- 核心抽籤邏輯 ---
+def draw_next():
+    curr_idx = st.session_state.current_seat_idx
+    if curr_idx >= 28: return
 
-    with col_all:
+    # 1. 計算剩餘狀況
+    vision_left = [p for p in st.session_state.vision_needs if p not in st.session_state.seats]
+    partner_left = [p for p in st.session_state.partner_needs if p not in st.session_state.seats]
+    
+    # 前三排最後位置編號是 16 (10B 佈局 5+6+6=17)
+    # 2. 判斷是否觸發「保底機制」
+    
+    # A. 視力保底：如果在前三排最後一個位置(16)還沒抽到他們
+    force_vision = (curr_idx == 16 and len(vision_left) > 0)
+    
+    # B. 好朋友保底：如果在前三排最後兩個位置(15, 16)還沒抽到他們 (假設好朋友也想坐前排)
+    force_partner = (curr_idx >= 15 and curr_idx <= 16 and len(partner_left) > 0)
+
+    chosen_person = None
+
+    if force_vision:
+        chosen_person = vision_left[0]
+    elif force_partner:
+        chosen_person = partner_left[0]
+    else:
+        # 正常抽籤：從剩餘池子抓第一個
+        remaining_in_pool = [p for p in st.session_state.draw_pool if p not in st.session_state.seats]
+        if remaining_in_pool:
+            chosen_person = remaining_in_pool[0]
+
+    # 填入座位
+    if chosen_person:
+        st.session_state.seats[curr_idx] = chosen_person
+        st.session_state.current_seat_idx += 1
+        if st.session_state.current_seat_idx == 28: st.balloons()
+
+# 按鈕區
+if st.session_state.current_seat_idx < 28:
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🎲 抽出下一位"): draw_next()
+    with c2:
         if st.button("⚡ 一次直接抽完"):
-            while st.session_state.seated_count < 28:
-                next_p = st.session_state.shuffled_list[st.session_state.seated_count]
-                st.session_state.seats[st.session_state.seated_count] = next_p
-                st.session_state.seated_count += 1
-            st.balloons()
+            while st.session_state.current_seat_idx < 28: draw_next()
 
 # 視覺元件：黑板
-st.markdown("""
-    <div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 50%; margin: 0 auto 40px auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.2);">
-        🎬 黑 板 ( 正 前 方 )
-    </div>
-""", unsafe_allow_html=True)
+st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 50%; margin: 0 auto 40px auto;">🎬 黑 板 ( 正 前 方 )</div>', unsafe_allow_html=True)
 
 # 3. 繪製座位表
 layout = [5, 6, 6, 6, 5]
 idx = 0
+special_set = set(st.session_state.vision_needs + st.session_state.partner_needs)
 for row_idx, count in enumerate(layout):
     cols = st.columns(count)
     for i in range(count):
         person = st.session_state.seats[idx]
         with cols[i]:
             if person:
-                # 判斷是否要顯示特別標記顏色
-                is_special = show_special and (person in st.session_state.special_names)
+                is_special = show_special and (person in special_set)
                 class_name = "seat-box special-mark" if is_special else "seat-box"
                 st.markdown(f'<div class="{class_name}">{person}</div>', unsafe_allow_html=True)
             else:
