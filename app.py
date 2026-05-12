@@ -5,22 +5,22 @@ import pandas as pd
 # 1. 網頁基本設定
 st.set_page_config(page_title="10B 尋夢班 座位系統", layout="wide")
 
-# CSS 美化：調整座位樣式，並讓禁區變成透明
+# CSS 美化：拿掉所有不必要的標籤樣式
 st.markdown("""
     <style>
     .stButton>button { width: 100%; font-size: 16px; height: 3em; border-radius: 10px; margin-bottom: 10px; }
-    .seat { border-radius: 8px; padding: 15px; text-align: center; margin-bottom: 10px; font-weight: bold; min-height: 65px; display: flex; align-items: center; justify-content: center; }
-    .normal { background-color: #e3f2fd; border: 2px solid #2196f3; color: #0d47a1; } /* 藍色 */
-    .vision { background-color: #ffe0b2; border: 2px solid #fb8c00; color: #ef6c00; } /* 橘色 */
-    .friend { background-color: #fce4ec; border: 2px solid #f06292; color: #ad1457; } /* 粉色 */
-    .empty  { background-color: #f5f5f5; border: 2px dashed #bdbdbd; color: #bdbdbd; } /* 灰色虛線 */
-    .blocked { visibility: hidden; } /* 💡 關鍵：這會讓格子佔位置，但完全隱形 */
+    .seat { border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; min-height: 65px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .normal { background-color: #e3f2fd; border: 2px solid #2196f3; color: #0d47a1; }
+    .vision { background-color: #ffe0b2; border: 2px solid #fb8c00; color: #ef6c00; }
+    .friend { background-color: #fce4ec; border: 2px solid #f06292; color: #ad1457; }
+    .empty  { background-color: #fdfdfd; border: 1px dashed #e0e0e0; } /* 💡 抽籤前完全空白的格子 */
+    .blocked { visibility: hidden; } 
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# 2. 初始化狀態 (建立名單、洗牌)
+# 2. 初始化狀態
 if 'seats' not in st.session_state:
     st.session_state.vision_list = ["1吳采軒", "21陳彥寧", "25葉明寬"]
     st.session_state.best_friends = ["5吳瑾瑜", "9李忻嬡"]
@@ -33,46 +33,33 @@ if 'seats' not in st.session_state:
         "13林霏", "8李羿宸", "4吳元希", "12洪軒平", "28簡向晨"
     ]
     
-    # 隨機洗牌
     st.session_state.pool = all_names.copy()
     random.shuffle(st.session_state.pool)
-    
-    # 建立 30 個空格 (6x5)
     st.session_state.seats = [None] * 30
     st.session_state.count = 0 
-    
-    # 定義哪幾個索引要留白 (0 是左上, 29 是右下)
     st.session_state.blocked_indices = [0, 29]
 
 # 3. 核心抽籤函數
 def draw_next():
-    # 找下一個可以坐的位置 (跳過禁區與已有人的位子)
     idx = 0
     while idx < 30 and (idx in st.session_state.blocked_indices or st.session_state.seats[idx] is not None):
         idx += 1
-    
     if idx >= 30: return
 
     vision_left = [p for p in st.session_state.vision_list if p not in st.session_state.seats]
     friends_left = [p for p in st.session_state.best_friends if p not in st.session_state.seats]
-    
-    # 檢查前三排 (索引 0-17) 剩下的空位
     available_front = [i for i in range(18) if i not in st.session_state.blocked_indices and st.session_state.seats[i] is None]
     
     chosen = None
-    # 保底機制：位置快不夠了就強制抽特殊需求同學
     if idx < 18 and len(available_front) <= (len(vision_left) + len(friends_left)):
         chosen = friends_left[0] if friends_left else vision_left[0]
     else:
-        # 正常隨機抽
         pool_left = [p for p in st.session_state.pool if p not in st.session_state.seats]
         if pool_left: chosen = pool_left[0]
 
     if chosen:
         st.session_state.seats[idx] = chosen
         st.session_state.count += 1
-        
-        # 好朋友連號：抽到一個，另一個自動坐隔壁
         if chosen in st.session_state.best_friends:
             other = [p for p in st.session_state.best_friends if p != chosen][0]
             if other not in st.session_state.seats:
@@ -92,14 +79,23 @@ with st.sidebar:
             while st.session_state.count < 28: draw_next()
     
     show_mark = st.checkbox("🔍 顯示特別安排標記", value=False)
-    
     if st.button("🔄 重置並重新洗牌"):
         st.session_state.clear()
         st.rerun()
 
-# 5. 主畫面：6x5 座位圖
+    if st.session_state.count > 0:
+        st.write("---")
+        report = ""
+        for i, name in enumerate(st.session_state.seats):
+            if i not in st.session_state.blocked_indices:
+                report += f"位置{i+1}: {name if name else '(空)'}\n"
+        st.text_area("📋 複製文字存檔到 Google 文件", report, height=150)
+
+# 5. 主畫面：座位圖
 st.title("🏫 10B 尋夢班 座位抽籤系統")
-st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 60%; margin: 0 auto 40px auto;">🎬 黑 板 ( 正 前 方 )</div>', unsafe_allow_html=True)
+
+# 黑板
+st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 10px; text-align: center; border-radius: 8px; font-size: 24px; font-weight: bold; width: 40%; margin: 0 auto 30px auto;">🎬 黑 板</div>', unsafe_allow_html=True)
 
 for row in range(5):
     cols = st.columns(6)
@@ -107,18 +103,20 @@ for row in range(5):
         idx = row * 6 + col
         with cols[col]:
             if idx in st.session_state.blocked_indices:
-                # 使用 blocked class，它會佔據空間但隱形
                 st.markdown('<div class="seat blocked"></div>', unsafe_allow_html=True)
             else:
                 name = st.session_state.seats[idx]
+                style = "normal"
+                if show_mark and name:
+                    if name in st.session_state.vision_list: style = "vision"
+                    if name in st.session_state.best_friends: style = "friend"
+                
                 if name:
-                    style = "normal"
-                    if show_mark:
-                        if name in st.session_state.vision_list: style = "vision"
-                        if name in st.session_state.best_friends: style = "friend"
+                    # 💡 只顯示名字
                     st.markdown(f'<div class="seat {style}">{name}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="seat empty">{idx + 1}</div>', unsafe_allow_html=True)
+                    # 💡 抽籤前完全空白，連標籤都沒有
+                    st.markdown(f'<div class="seat empty"></div>', unsafe_allow_html=True)
 
 if st.session_state.count >= 28:
     st.balloons()
