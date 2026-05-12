@@ -97,6 +97,14 @@ with st.sidebar:
         st.session_state.clear()
         st.rerun()
 
+if st.session_state.count > 0:
+        st.write("---")
+        report = ""
+        for i, name in enumerate(st.session_state.seats):
+            if i not in st.session_state.blocked_indices:
+                report += f"位置{i+1}: {name if name else '(空)'}\n"
+        st.text_area("📋 複製文字存檔到 Google 文件", report, height=150)
+
 # 5. 主畫面：6x5 座位圖
 st.title("🏫 10B 尋夢班 座位抽籤系統")
 st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 60%; margin: 0 auto 40px auto;">🎬 黑 板 ( 正 前 方 )</div>', unsafe_allow_html=True)
