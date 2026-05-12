@@ -26,12 +26,11 @@ st.markdown("""
 
 # 2. 初始化狀態
 if 'draw_pool' not in st.session_state:
-    # 定義「視力需求者」
+    # 視力需求名單
     st.session_state.vision_needs = ["1吳采軒", "21陳彥寧", "25葉明寬"]
-    # 定義「好朋友組」
-    st.session_state.partner_needs = ["5吳瑾瑜", "9李忻嬡"]
+    # 好朋友組 (這兩個人會綁定出現)
+    st.session_state.best_friends = ["5吳瑾瑜", "9李忻嬡"]
     
-    # 所有人大洗牌 (完全公平)
     full_names = [
         "20黃柏瑞", "14郭承叡", "3吳亭葦", "7宋禹潔", "15張谷杉",
         "5吳瑾瑜", "9李忻嬡", "29顏子旅", "10李維", "17張楚楚", "16陳永軍",
@@ -44,7 +43,7 @@ if 'draw_pool' not in st.session_state:
     random.shuffle(st.session_state.draw_pool)
     
     st.session_state.seats = [None] * 28
-    st.session_state.current_seat_idx = 0  # 準備填入的座位編號 (0-27)
+    st.session_state.current_seat_idx = 0
 
 # --- 介面呈現 ---
 st.title("🏫 10B 尋夢班 座位抽籤系統")
@@ -61,36 +60,41 @@ def draw_next():
     curr_idx = st.session_state.current_seat_idx
     if curr_idx >= 28: return
 
-    # 1. 計算剩餘狀況
+    # 1. 檢查哪些特殊需求者還沒入座
     vision_left = [p for p in st.session_state.vision_needs if p not in st.session_state.seats]
-    partner_left = [p for p in st.session_state.partner_needs if p not in st.session_state.seats]
+    friends_left = [p for p in st.session_state.best_friends if p not in st.session_state.seats]
     
-    # 前三排最後位置編號是 16 (10B 佈局 5+6+6=17)
-    # 2. 判斷是否觸發「保底機制」
-    
-    # A. 視力保底：如果在前三排最後一個位置(16)還沒抽到他們
-    force_vision = (curr_idx == 16 and len(vision_left) > 0)
-    
-    # B. 好朋友保底：如果在前三排最後兩個位置(15, 16)還沒抽到他們 (假設好朋友也想坐前排)
-    force_partner = (curr_idx >= 15 and curr_idx <= 16 and len(partner_left) > 0)
-
     chosen_person = None
 
-    if force_vision:
+    # A. 好朋友保底：如果到了前三排最後兩個位置 (15, 16) 且好朋友都還沒出現
+    if curr_idx >= 15 and curr_idx <= 16 and len(friends_left) > 0:
+        chosen_person = friends_left[0]
+    
+    # B. 視力保底：到了前三排最後一個位置 (16) 且視力組還有人沒出現
+    elif curr_idx == 16 and len(vision_left) > 0:
         chosen_person = vision_left[0]
-    elif force_partner:
-        chosen_person = partner_left[0]
+        
     else:
-        # 正常抽籤：從剩餘池子抓第一個
-        remaining_in_pool = [p for p in st.session_state.draw_pool if p not in st.session_state.seats]
-        if remaining_in_pool:
-            chosen_person = remaining_in_pool[0]
+        # C. 正常隨機抽取
+        remaining_pool = [p for p in st.session_state.draw_pool if p not in st.session_state.seats]
+        if remaining_pool:
+            chosen_person = remaining_pool[0]
 
-    # 填入座位
+    # 填入位置
     if chosen_person:
         st.session_state.seats[curr_idx] = chosen_person
         st.session_state.current_seat_idx += 1
-        if st.session_state.current_seat_idx == 28: st.balloons()
+        
+        # --- 💡 關鍵修正：好朋友綁定邏輯 ---
+        # 如果剛才抽到的是好朋友其中之一，且另一個人還沒入座
+        if chosen_person in st.session_state.best_friends:
+            other_friend = [p for p in st.session_state.best_friends if p != chosen_person][0]
+            if other_friend not in st.session_state.seats and st.session_state.current_seat_idx < 28:
+                # 把另一個朋友直接放在下一個位置
+                st.session_state.seats[st.session_state.current_seat_idx] = other_friend
+                st.session_state.current_seat_idx += 1
+
+        if st.session_state.current_seat_idx >= 28: st.balloons()
 
 # 按鈕區
 if st.session_state.current_seat_idx < 28:
@@ -107,7 +111,7 @@ st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px;
 # 3. 繪製座位表
 layout = [5, 6, 6, 6, 5]
 idx = 0
-special_set = set(st.session_state.vision_needs + st.session_state.partner_needs)
+special_set = set(st.session_state.vision_needs + st.session_state.best_friends)
 for row_idx, count in enumerate(layout):
     cols = st.columns(count)
     for i in range(count):
