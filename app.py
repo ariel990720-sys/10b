@@ -53,4 +53,77 @@ def draw_next():
 
     vision_left = [p for p in st.session_state.vision_list if p not in st.session_state.seats]
     friends_left = [p for p in st.session_state.best_friends if p not in st.session_state.seats]
-    available_front = [i for i in range(18) if i not in st.session_state.blocked_indices and st.session_state.seats[i]
+    available_front = [i for i in range(18) if i not in st.session_state.blocked_indices and st.session_state.seats[i] is None]
+    
+    chosen = None
+    if idx < 18 and len(available_front) <= (len(vision_left) + len(friends_left)):
+        chosen = friends_left[0] if friends_left else vision_left[0]
+    else:
+        pool_left = [p for p in st.session_state.pool if p not in st.session_state.seats]
+        if pool_left: chosen = pool_left[0]
+
+    if chosen:
+        st.session_state.seats[idx] = chosen
+        st.session_state.count += 1
+        if chosen in st.session_state.best_friends:
+            other = [p for p in st.session_state.best_friends if p != chosen][0]
+            if other not in st.session_state.seats:
+                next_idx = idx + 1
+                while next_idx < 30 and next_idx in st.session_state.blocked_indices:
+                    next_idx += 1
+                if next_idx < 30:
+                    st.session_state.seats[next_idx] = other
+                    st.session_state.count += 1
+
+# 4. 側邊欄介面
+with st.sidebar:
+    st.header("⚙️ 控制中心")
+    if st.session_state.count < 28:
+        if st.button("🎲 抽出下一位"): draw_next()
+        if st.button("⚡ 一次直接抽完"):
+            while st.session_state.count < 28: draw_next()
+    
+    if st.button("🔄 重置並重新洗牌"):
+        st.session_state.clear()
+        st.rerun()
+
+    if st.session_state.count > 0:
+        st.write("---")
+        report = ""
+        for i, name in enumerate(st.session_state.seats):
+            if i not in st.session_state.blocked_indices:
+                report += f"位置{i+1}: {name if name else '(空)'}\n"
+        st.text_area("📋 複製文字存檔到 Google 文件", report, height=150)
+    
+    st.write(" ") # 增加間距
+    # ㊙️ 隱藏上帝開關：只有你知道這裡有個小點可以勾選
+    show_mark = st.checkbox(".", value=False) 
+
+# 5. 主畫面：座位圖
+st.title("🏫 10B 尋夢班 座位抽籤系統")
+
+# 黑板
+st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 10px; text-align: center; border-radius: 8px; font-size: 24px; font-weight: bold; width: 40%; margin: 0 auto 30px auto;">🎬 黑 板</div>', unsafe_allow_html=True)
+
+for row in range(5):
+    cols = st.columns(6)
+    for col in range(6):
+        idx = row * 6 + col
+        with cols[col]:
+            if idx in st.session_state.blocked_indices:
+                st.markdown('<div class="seat blocked"></div>', unsafe_allow_html=True)
+            else:
+                name = st.session_state.seats[idx]
+                style = "normal"
+                if show_mark and name:
+                    if name in st.session_state.vision_list: style = "vision"
+                    if name in st.session_state.best_friends: style = "friend"
+                
+                if name:
+                    st.markdown(f'<div class="seat {style}">{name}</div>', unsafe_allow_html=True)
+                else:
+                    # 💡 抽籤前格子完全空白
+                    st.markdown(f'<div class="seat empty"></div>', unsafe_allow_html=True)
+
+if st.session_state.count >= 28:
+    st.balloons()
