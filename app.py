@@ -97,12 +97,6 @@ with st.sidebar:
         st.session_state.clear()
         st.rerun()
 
-    if st.session_state.count > 0:
-        st.write("---")
-        df = pd.DataFrame({"位置": range(1, 31), "學生": st.session_state.seats})
-        csv = df.to_csv(index=False).encode('utf-8-sig')
-        st.download_button("📥 下載座位表 (CSV)", csv, "10B_SeatMap.csv", "text/csv")
-
 # 5. 主畫面：6x5 座位圖
 st.title("🏫 10B 尋夢班 座位抽籤系統")
 st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 60%; margin: 0 auto 40px auto;">🎬 黑 板 ( 正 前 方 )</div>', unsafe_allow_html=True)
