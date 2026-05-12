@@ -129,4 +129,9 @@ for row in range(5):
                 if name:
                     st.markdown(f'<div class="seat {style}">{name}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="seat empty">{current_seat_number}
+                    st.markdown(f'<div class="seat empty">{current_seat_number}</div>', unsafe_allow_html=True)
+                
+                current_seat_number += 1 # 只有坐人的格子編號才會增加
+
+if st.session_state.count >= 28:
+    st.balloons()
