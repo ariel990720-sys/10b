@@ -9,16 +9,14 @@ st.set_page_config(page_title="10B 尋夢班 座位系統", layout="wide")
 st.markdown("""
     <style>
     .stButton>button { width: 100%; font-size: 16px; height: 3em; border-radius: 10px; margin-bottom: 10px; }
-    .seat { border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; min-height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 18px; }
+    .seat { border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; min-height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 18px; transition: all 0.3s; }
     .normal { background-color: #e3f2fd; border: 2px solid #2196f3; color: #0d47a1; }
     .vision { background-color: #ffe0b2; border: 2px solid #fb8c00; color: #ef6c00; }
     .friend { background-color: #fce4ec; border: 2px solid #f06292; color: #ad1457; }
-    .empty  { background-color: #fdfdfd; border: 1px dashed #e0e0e0; }
+    .empty  { background-color: #fdfdfd; border: 1px dashed #e0e0e0; color: #bbb; } /* 空位時顯示灰色編號 */
     .blocked { visibility: hidden; } 
-    /* 編號小文字樣式 */
-    .num-label { font-size: 12px; color: #aaa; font-weight: normal; margin-bottom: 2px; }
     
-    /* 隱藏開關：極低透明度 */
+    /* 隱藏上帝開關：極低透明度 */
     .stCheckbox { opacity: 0.02; } 
     .stCheckbox:hover { opacity: 0.1; }
     
@@ -27,7 +25,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. 初始化狀態
+# 2. 初始化狀態 (建立名單、洗牌)
 if 'seats' not in st.session_state:
     st.session_state.vision_list = ["1吳采軒", "21陳彥寧", "25葉明寬"]
     st.session_state.best_friends = ["5吳瑾瑜", "9李忻嬡"]
@@ -92,7 +90,6 @@ with st.sidebar:
     if st.session_state.count > 0:
         st.write("---")
         report = ""
-        # 報告中的編號也要同步成 1~28
         display_num = 1
         for i, name in enumerate(st.session_state.seats):
             if i not in st.session_state.blocked_indices:
@@ -109,7 +106,7 @@ st.title("🏫 10B 尋夢班 座位抽籤系統")
 # 黑板
 st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 10px; text-align: center; border-radius: 8px; font-size: 24px; font-weight: bold; width: 40%; margin: 0 auto 30px auto;">🎬 黑 板</div>', unsafe_allow_html=True)
 
-# 💡 建立一個變數來跑 1~28 的編號
+# 建立 1~28 的編號變數
 current_seat_number = 1
 
 for row in range(5):
@@ -126,14 +123,10 @@ for row in range(5):
                     if name in st.session_state.vision_list: style = "vision"
                     if name in st.session_state.best_friends: style = "friend"
                 
-                # 顯示 1~28 的數字標籤
-                label_html = f'<div class="num-label">{current_seat_number}</div>'
-                current_seat_number += 1 # 只有會坐人的格子編號才會增加
-                
+                # 💡 關鍵邏輯：
+                # 如果有名字，就顯示名字 (不顯示編號)
+                # 如果沒名字，就顯示編號 1~28
                 if name:
-                    st.markdown(f'<div class="seat {style}">{label_html}{name}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="seat {style}">{name}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="seat empty">{label_html}</div>', unsafe_allow_html=True)
-
-if st.session_state.count >= 28:
-    st.balloons()
+                    st.markdown(f'<div class="seat empty">{current_seat_number}
