@@ -99,4 +99,32 @@ with st.sidebar:
 
     if st.session_state.count > 0:
         st.write("---")
-        df = pd.DataFrame({"位置": range(1, 31), "學生
+        df = pd.DataFrame({"位置": range(1, 31), "學生": st.session_state.seats})
+        csv = df.to_csv(index=False).encode('utf-8-sig')
+        st.download_button("📥 下載座位表 (CSV)", csv, "10B_SeatMap.csv", "text/csv")
+
+# 5. 主畫面：6x5 座位圖
+st.title("🏫 10B 尋夢班 座位抽籤系統")
+st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 60%; margin: 0 auto 40px auto;">🎬 黑 板 ( 正 前 方 )</div>', unsafe_allow_html=True)
+
+for row in range(5):
+    cols = st.columns(6)
+    for col in range(6):
+        idx = row * 6 + col
+        with cols[col]:
+            if idx in st.session_state.blocked_indices:
+                # 使用 blocked class，它會佔據空間但隱形
+                st.markdown('<div class="seat blocked"></div>', unsafe_allow_html=True)
+            else:
+                name = st.session_state.seats[idx]
+                if name:
+                    style = "normal"
+                    if show_mark:
+                        if name in st.session_state.vision_list: style = "vision"
+                        if name in st.session_state.best_friends: style = "friend"
+                    st.markdown(f'<div class="seat {style}">{name}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="seat empty">{idx + 1}</div>', unsafe_allow_html=True)
+
+if st.session_state.count >= 28:
+    st.balloons()
