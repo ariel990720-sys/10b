@@ -9,14 +9,16 @@ st.set_page_config(page_title="10B 尋夢班 座位系統", layout="wide")
 st.markdown("""
     <style>
     .stButton>button { width: 100%; font-size: 16px; height: 3em; border-radius: 10px; margin-bottom: 10px; }
-    .seat { border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; min-height: 65px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .seat { border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; min-height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 18px; }
     .normal { background-color: #e3f2fd; border: 2px solid #2196f3; color: #0d47a1; }
     .vision { background-color: #ffe0b2; border: 2px solid #fb8c00; color: #ef6c00; }
     .friend { background-color: #fce4ec; border: 2px solid #f06292; color: #ad1457; }
     .empty  { background-color: #fdfdfd; border: 1px dashed #e0e0e0; }
     .blocked { visibility: hidden; } 
+    /* 編號小文字樣式 */
+    .num-label { font-size: 12px; color: #aaa; font-weight: normal; margin-bottom: 2px; }
     
-    /* 💡 隱藏上帝開關的 CSS：讓它幾乎透明，且標題點點幾乎看不見 */
+    /* 隱藏開關：極低透明度 */
     .stCheckbox { opacity: 0.02; } 
     .stCheckbox:hover { opacity: 0.1; }
     
@@ -90,13 +92,15 @@ with st.sidebar:
     if st.session_state.count > 0:
         st.write("---")
         report = ""
+        # 報告中的編號也要同步成 1~28
+        display_num = 1
         for i, name in enumerate(st.session_state.seats):
             if i not in st.session_state.blocked_indices:
-                report += f"位置{i+1}: {name if name else '(空)'}\n"
-        st.text_area("📋 複製文字存檔到 Google 文件", report, height=150)
+                report += f"{display_num}: {name if name else '(空)'}\n"
+                display_num += 1
+        st.text_area("📋 複製文字存檔", report, height=150)
     
-    st.write(" ") # 增加間距
-    # ㊙️ 隱藏上帝開關：只有你知道這裡有個小點可以勾選
+    st.write(" ")
     show_mark = st.checkbox(".", value=False) 
 
 # 5. 主畫面：座位圖
@@ -104,6 +108,9 @@ st.title("🏫 10B 尋夢班 座位抽籤系統")
 
 # 黑板
 st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 10px; text-align: center; border-radius: 8px; font-size: 24px; font-weight: bold; width: 40%; margin: 0 auto 30px auto;">🎬 黑 板</div>', unsafe_allow_html=True)
+
+# 💡 建立一個變數來跑 1~28 的編號
+current_seat_number = 1
 
 for row in range(5):
     cols = st.columns(6)
@@ -119,11 +126,14 @@ for row in range(5):
                     if name in st.session_state.vision_list: style = "vision"
                     if name in st.session_state.best_friends: style = "friend"
                 
+                # 顯示 1~28 的數字標籤
+                label_html = f'<div class="num-label">{current_seat_number}</div>'
+                current_seat_number += 1 # 只有會坐人的格子編號才會增加
+                
                 if name:
-                    st.markdown(f'<div class="seat {style}">{name}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="seat {style}">{label_html}{name}</div>', unsafe_allow_html=True)
                 else:
-                    # 💡 抽籤前格子完全空白
-                    st.markdown(f'<div class="seat empty"></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="seat empty">{label_html}</div>', unsafe_allow_html=True)
 
 if st.session_state.count >= 28:
     st.balloons()
