@@ -92,12 +92,11 @@ with st.sidebar:
             while st.session_state.count < 28: draw_next()
     
     show_mark = st.checkbox("🔍 顯示特別安排標記", value=False)
-    
     if st.button("🔄 重置並重新洗牌"):
         st.session_state.clear()
         st.rerun()
 
-if st.session_state.count > 0:
+    if st.session_state.count > 0:
         st.write("---")
         report = ""
         for i, name in enumerate(st.session_state.seats):
