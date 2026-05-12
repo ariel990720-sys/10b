@@ -26,11 +26,11 @@ st.markdown("""
 
 # 2. 初始化狀態
 if 'draw_pool' not in st.session_state:
-    # 視力需求名單
+    # --- ⚙️ 特別安排名單 ---
     st.session_state.vision_needs = ["1吳采軒", "21陳彥寧", "25葉明寬"]
-    # 好朋友組 (這兩個人會綁定出現)
     st.session_state.best_friends = ["5吳瑾瑜", "9李忻嬡"]
     
+    # 全班大名單 (請務必確認名字與上面一致)
     full_names = [
         "20黃柏瑞", "14郭承叡", "3吳亭葦", "7宋禹潔", "15張谷杉",
         "5吳瑾瑜", "9李忻嬡", "29顏子旅", "10李維", "17張楚楚", "16陳永軍",
@@ -39,6 +39,7 @@ if 'draw_pool' not in st.session_state:
         "13林霏", "8李羿宸", "4吳元希", "12洪軒平", "28簡向晨"
     ]
     
+    # 【絕對公平】所有人都在同一個池子隨機洗牌
     st.session_state.draw_pool = full_names.copy()
     random.shuffle(st.session_state.draw_pool)
     
@@ -60,43 +61,48 @@ def draw_next():
     curr_idx = st.session_state.current_seat_idx
     if curr_idx >= 28: return
 
-    # 1. 檢查哪些特殊需求者還沒入座
+    # 1. 檢查還有誰沒入座
     vision_left = [p for p in st.session_state.vision_needs if p not in st.session_state.seats]
     friends_left = [p for p in st.session_state.best_friends if p not in st.session_state.seats]
+    total_special_left = len(vision_left) + len(friends_left)
+    
+    # 2. 計算前三排剩餘位置 (前三排共 17 個位子，索引 0~16)
+    seats_left_in_front = 17 - curr_idx
     
     chosen_person = None
 
-    # A. 好朋友保底：如果到了前三排最後兩個位置 (15, 16) 且好朋友都還沒出現
-    if curr_idx >= 15 and curr_idx <= 16 and len(friends_left) > 0:
-        chosen_person = friends_left[0]
-    
-    # B. 視力保底：到了前三排最後一個位置 (16) 且視力組還有人沒出現
-    elif curr_idx == 16 and len(vision_left) > 0:
-        chosen_person = vision_left[0]
-        
+    # --- 🚨 觸發保底機制 ---
+    # 如果剩餘的前三排位置剛好等於還沒抽到的特殊學生數，就必須抓他們出來
+    if curr_idx < 17 and seats_left_in_front <= total_special_left:
+        if friends_left:
+            chosen_person = friends_left[0]
+        elif vision_left:
+            chosen_person = vision_left[0]
     else:
-        # C. 正常隨機抽取
-        remaining_pool = [p for p in st.session_state.draw_pool if p not in st.session_state.seats]
-        if remaining_pool:
-            chosen_person = remaining_pool[0]
+        # --- 🎲 正常隨機抽取 ---
+        # 從洗好的池子裡找出下一個還沒入座的人
+        remaining_in_pool = [p for p in st.session_state.draw_pool if p not in st.session_state.seats]
+        if remaining_in_pool:
+            chosen_person = remaining_in_pool[0]
 
-    # 填入位置
+    # 3. 執行入座
     if chosen_person:
         st.session_state.seats[curr_idx] = chosen_person
         st.session_state.current_seat_idx += 1
         
-        # --- 💡 關鍵修正：好朋友綁定邏輯 ---
-        # 如果剛才抽到的是好朋友其中之一，且另一個人還沒入座
+        # --- 🤝 好朋友連帶邏輯 ---
+        # 如果剛才抽到瑾瑜或心嬡，且另一人還沒入座
         if chosen_person in st.session_state.best_friends:
             other_friend = [p for p in st.session_state.best_friends if p != chosen_person][0]
-            if other_friend not in st.session_state.seats and st.session_state.current_seat_idx < 28:
-                # 把另一個朋友直接放在下一個位置
-                st.session_state.seats[st.session_state.current_seat_idx] = other_friend
-                st.session_state.current_seat_idx += 1
+            if other_friend not in st.session_state.seats:
+                # 為了公平，好朋友連帶僅在還有前三排位置時生效
+                if st.session_state.current_seat_idx < 17:
+                    st.session_state.seats[st.session_state.current_seat_idx] = other_friend
+                    st.session_state.current_seat_idx += 1
 
         if st.session_state.current_seat_idx >= 28: st.balloons()
 
-# 按鈕區
+# --- 按鈕操作區 ---
 if st.session_state.current_seat_idx < 28:
     c1, c2 = st.columns(2)
     with c1:
@@ -106,9 +112,9 @@ if st.session_state.current_seat_idx < 28:
             while st.session_state.current_seat_idx < 28: draw_next()
 
 # 視覺元件：黑板
-st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 50%; margin: 0 auto 40px auto;">🎬 黑 板 ( 正 前 方 )</div>', unsafe_allow_html=True)
+st.markdown('<div style="background-color: #1e3d2f; color: white; padding: 15px; text-align: center; border-radius: 10px; border: 5px solid #5d4037; font-size: 24px; font-weight: bold; width: 50%; margin: 0 auto 40px auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.2);">🎬 黑 板 ( 正 前 方 )</div>', unsafe_allow_html=True)
 
-# 3. 繪製座位表
+# 3. 繪製座位表 (5, 6, 6, 6, 5)
 layout = [5, 6, 6, 6, 5]
 idx = 0
 special_set = set(st.session_state.vision_needs + st.session_state.best_friends)
